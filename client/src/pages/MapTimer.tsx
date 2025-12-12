@@ -67,7 +67,8 @@ export default function MapTimer() {
       console.log("📍 OSRM URL:", url);
       
       const response = await fetch(url, { 
-        headers: { 'Accept': 'application/json' }
+        headers: { 'Accept': 'application/json' },
+        mode: 'cors'
       });
       
       if (!response.ok) {
@@ -105,6 +106,29 @@ export default function MapTimer() {
       }
     } catch (error: any) {
       console.error("❌ Route fetch error:", error);
+      // Fallback: If OSRM fails (common due to rate limits or cors), allow straight line fallback
+      if (error.message.includes("Failed to fetch") || error.message.includes("NetworkError")) {
+          console.log("⚠️ Fallback to straight line routing due to API error");
+          const straightLine = [
+              [start.lng, start.lat],
+              [end.lng, end.lat]
+          ];
+          const path = [{lat: start.lat, lng: start.lng}, {lat: end.lat, lng: end.lng}];
+          const line = turf.lineString(straightLine);
+          
+          // Estimate duration: 5km/h walking speed
+          const distKm = turf.length(line, { units: 'kilometers' });
+          const hours = distKm / 5;
+          const seconds = Math.ceil(hours * 3600);
+          
+          setRoutePath(path);
+          setTurfLine(line);
+          setDuration(seconds);
+          setTimeLeft(seconds);
+          setCurrentPos(start);
+          setRouteError("API unavailable - Using straight line estimate");
+          return;
+      }
       setRouteError(error.message || "Failed to calculate route");
     } finally {
       setIsLoadingRoute(false);
@@ -186,8 +210,17 @@ export default function MapTimer() {
 
   const resetTimer = () => {
     setIsActive(false);
-    setTimeLeft(duration);
-    if (startPos) setCurrentPos(startPos);
+    setTimeLeft(0);
+    setDuration(0);
+    setStartPos(null);
+    setEndPos(null);
+    setRoutePath([]);
+    setTurfLine(null);
+    setCurrentPos(null);
+    startPosRef.current = null;
+    setIsSettingStart(true);
+    setRouteError(null);
+    console.log("↺ Reset complete");
   };
 
   const formatTime = (seconds: number) => {
