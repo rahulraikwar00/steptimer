@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { MapContainer, TileLayer, Marker, Popup, useMapEvents, Polyline, CircleMarker } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
-import { Play, Pause, RotateCcw, MapPin, Navigation, Settings, Loader2 } from "lucide-react";
+import { Play, Pause, RotateCcw, MapPin, Navigation, Settings, Loader2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -31,9 +31,6 @@ L.Icon.Default.mergeOptions({
 // Types
 type LatLng = { lat: number; lng: number };
 
-// Helper to decode OSRM polyline (if needed) or just use GeoJSON from OSRM
-// OSRM returns GeoJSON coordinates as [lon, lat]
-
 function MapEvents({ onMapClick }: { onMapClick: (e: L.LeafletMouseEvent) => void }) {
   useMapEvents({
     click: onMapClick,
@@ -46,50 +43,51 @@ export default function MapTimer() {
   const [endPos, setEndPos] = useState<LatLng | null>(null);
   const [currentPos, setCurrentPos] = useState<LatLng | null>(null);
   const [routePath, setRoutePath] = useState<LatLng[]>([]);
-  const [turfLine, setTurfLine] = useState<any>(null); // GeoJSON LineString
+  const [turfLine, setTurfLine] = useState<any>(null);
   
   const [timeLeft, setTimeLeft] = useState(0); 
   const [duration, setDuration] = useState(0);
   const [isActive, setIsActive] = useState(false);
   const [isLoadingRoute, setIsLoadingRoute] = useState(false);
+  const [routeError, setRouteError] = useState<string | null>(null);
   
-  // HUD State
   const [isSettingStart, setIsSettingStart] = useState(true);
 
-  // Handle Map Clicks
-  const handleMapClick = async (e: L.LeafletMouseEvent) => {
-    if (isActive) return;
+  // Fetch Route from OSRM - using useRef to avoid stale closure issues
+  const startPosRef = useRef<LatLng | null>(null);
 
-    if (isSettingStart) {
-      setStartPos(e.latlng);
-      setCurrentPos(e.latlng);
-      setEndPos(null); // Reset end if start changes
-      setRoutePath([]);
-      setDuration(0);
-      setTimeLeft(0);
-      setIsSettingStart(false);
-    } else {
-      setEndPos(e.latlng);
-      if (startPos) {
-        await fetchRoute(startPos, e.latlng);
-      }
-    }
-  };
-
-  // Fetch Route from OSRM
   const fetchRoute = async (start: LatLng, end: LatLng) => {
+    console.log("🛣️ Fetching route from", start, "to", end);
     setIsLoadingRoute(true);
+    setRouteError(null);
+    
     try {
-      // OSRM uses lon,lat
+      // OSRM expects: lng,lat;lng,lat
       const url = `https://router.project-osrm.org/route/v1/walking/${start.lng},${start.lat};${end.lng},${end.lat}?overview=full&geometries=geojson`;
+      console.log("📍 OSRM URL:", url);
       
-      const response = await fetch(url);
+      const response = await fetch(url, { 
+        headers: { 'Accept': 'application/json' }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      
       const data = await response.json();
+      console.log("📊 OSRM Response:", data);
+
+      if (data.code !== "Ok") {
+        throw new Error(data.message || "Route calculation failed");
+      }
 
       if (data.routes && data.routes.length > 0) {
         const route = data.routes[0];
         const seconds = Math.ceil(route.duration);
+        const distance = route.distance / 1000; // Convert to km
         const coordinates = route.geometry.coordinates; // [lon, lat] arrays
+
+        console.log(`✅ Route found: ${distance.toFixed(2)} km, ${Math.floor(seconds / 60)} min ${seconds % 60} sec`);
 
         // Convert to Leaflet LatLng for drawing
         const path = coordinates.map((coord: number[]) => ({ lat: coord[1], lng: coord[0] }));
@@ -101,11 +99,43 @@ export default function MapTimer() {
         setTurfLine(line);
         setDuration(seconds);
         setTimeLeft(seconds);
+        setCurrentPos(start);
+      } else {
+        throw new Error("No routes found");
       }
-    } catch (error) {
-      console.error("Failed to fetch route", error);
+    } catch (error: any) {
+      console.error("❌ Route fetch error:", error);
+      setRouteError(error.message || "Failed to calculate route");
     } finally {
       setIsLoadingRoute(false);
+    }
+  };
+
+  // Handle Map Clicks
+  const handleMapClick = (e: L.LeafletMouseEvent) => {
+    if (isActive) return;
+
+    console.log("📌 Map clicked at:", e.latlng);
+
+    if (isSettingStart) {
+      setStartPos(e.latlng);
+      startPosRef.current = e.latlng;
+      setCurrentPos(e.latlng);
+      setEndPos(null);
+      setRoutePath([]);
+      setDuration(0);
+      setTimeLeft(0);
+      setRouteError(null);
+      setIsSettingStart(false);
+      console.log("✓ Start point set");
+    } else {
+      // Use ref for immediate access
+      const start = startPosRef.current;
+      if (start) {
+        setEndPos(e.latlng);
+        console.log("✓ End point set, fetching route...");
+        fetchRoute(start, e.latlng);
+      }
     }
   };
 
@@ -135,15 +165,11 @@ export default function MapTimer() {
   useEffect(() => {
     if (isActive && turfLine && duration > 0 && timeLeft >= 0) {
       const elapsedTime = duration - timeLeft;
-      const progress = elapsedTime / duration; // 0 to 1 (time based)
+      const progress = elapsedTime / duration; // 0 to 1
       
-      // Calculate total distance of the route
       const totalDistance = turf.length(turfLine, { units: 'kilometers' });
-      
-      // Calculate target distance along the path based on time progress
       const targetDistance = totalDistance * progress;
       
-      // Get the point at this distance
       const point = turf.along(turfLine, targetDistance, { units: 'kilometers' });
       const [lng, lat] = point.geometry.coordinates;
       
@@ -154,7 +180,7 @@ export default function MapTimer() {
   }, [timeLeft, isActive, turfLine, duration, endPos]);
 
   const toggleTimer = () => {
-    if (!startPos || !endPos || !routePath.length) return;
+    if (!startPos || !endPos || !routePath.length || isLoadingRoute) return;
     setIsActive(!isActive);
   };
 
@@ -170,7 +196,6 @@ export default function MapTimer() {
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // Distance Text (Real Route Distance)
   const distanceText = turfLine 
     ? `${turf.length(turfLine, { units: 'kilometers' }).toFixed(2)} km` 
     : "0 km";
@@ -218,21 +243,18 @@ export default function MapTimer() {
             </Marker>
           )}
 
-          {/* Route Path */}
-          {routePath.length > 0 && (
+          {/* Route Path - Draw it! */}
+          {routePath.length > 1 && (
             <>
-              {/* Background thick line for visibility */}
               <Polyline 
                 positions={routePath} 
                 color="white" 
                 weight={6} 
                 opacity={0.8} 
               />
-              {/* Foreground dashed line */}
               <Polyline 
                 positions={routePath} 
                 color="#3b82f6" 
-                dashArray="10, 10" 
                 weight={3} 
                 opacity={1} 
               />
@@ -267,26 +289,35 @@ export default function MapTimer() {
               </div>
               {duration > 0 && (
                  <span className="text-xs text-muted-foreground mt-1">
-                   Estimated Walking Time
+                   Walking Time: {distanceText}
                  </span>
               )}
             </div>
 
-            {/* Instructions / Status */}
+            {/* Status Message */}
             {!isActive && (
-              <div className="text-sm text-muted-foreground text-center bg-muted/50 p-2 rounded w-full min-h-[3rem] flex items-center justify-center">
-                {isLoadingRoute ? (
+              <div className="text-sm text-center bg-muted/50 p-2 rounded w-full min-h-[3.5rem] flex items-center justify-center">
+                {routeError && (
+                  <div className="flex items-start gap-2 text-red-500">
+                    <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                    <span>{routeError}</span>
+                  </div>
+                )}
+                {isLoadingRoute && (
                    <span className="flex items-center gap-2 text-blue-500">
                      <Loader2 className="w-4 h-4 animate-spin" /> Calculating route...
                    </span>
-                ) : !startPos ? (
-                  <span className="text-green-600 font-bold animate-pulse">Tap map to set START point</span>
-                ) : !endPos ? (
-                  <span className="text-red-500 font-bold animate-pulse">Tap map to set DESTINATION</span>
-                ) : (
+                )}
+                {!isLoadingRoute && !routeError && !startPos && (
+                  <span className="text-green-600 font-bold animate-pulse">Tap map to set START</span>
+                )}
+                {!isLoadingRoute && !routeError && startPos && !endPos && (
+                  <span className="text-orange-500 font-bold animate-pulse">Tap map to set DESTINATION</span>
+                )}
+                {!isLoadingRoute && !routeError && startPos && endPos && routePath.length > 0 && (
                   <div className="flex flex-col">
-                    <span className="font-semibold text-foreground">Route Ready!</span>
-                    <span>Distance: {distanceText}</span>
+                    <span className="font-semibold text-foreground">✅ Route Ready!</span>
+                    <span className="text-xs">{distanceText} · {Math.floor(duration / 60)}m {duration % 60}s</span>
                   </div>
                 )}
               </div>
@@ -296,8 +327,8 @@ export default function MapTimer() {
             <div className="flex items-center gap-3 w-full justify-center">
                <Button 
                 size="lg"
-                className={`w-16 h-16 rounded-full shadow-lg transition-all ${!startPos || !endPos || isLoadingRoute ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105'}`}
-                disabled={!startPos || !endPos || isLoadingRoute}
+                className={`w-16 h-16 rounded-full shadow-lg transition-all ${!startPos || !endPos || !routePath.length || isLoadingRoute ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105'}`}
+                disabled={!startPos || !endPos || !routePath.length || isLoadingRoute}
                 onClick={toggleTimer}
               >
                 {isActive ? <Pause className="w-8 h-8" /> : <Play className="w-8 h-8 ml-1" />}
@@ -320,34 +351,15 @@ export default function MapTimer() {
                 </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>
-                    <DialogTitle>Map Settings</DialogTitle>
+                    <DialogTitle>Settings</DialogTitle>
                   </DialogHeader>
                   <div className="py-4 space-y-6">
-                    <div className="space-y-2">
-                       <Label>Map Controls</Label>
-                       <div className="flex gap-2">
-                         <Button 
-                           variant={isSettingStart ? "default" : "outline"}
-                           size="sm"
-                           onClick={() => setIsSettingStart(true)}
-                           className="flex-1"
-                         >
-                           <MapPin className="w-4 h-4 mr-2 text-green-500" />
-                           Set Start
-                         </Button>
-                         <Button 
-                           variant={!isSettingStart ? "default" : "outline"}
-                           size="sm"
-                           onClick={() => setIsSettingStart(false)}
-                           className="flex-1"
-                         >
-                           <MapPin className="w-4 h-4 mr-2 text-red-500" />
-                           Set End
-                         </Button>
-                       </div>
-                       <p className="text-xs text-muted-foreground mt-2">
-                         Note: Duration is automatically calculated based on realistic walking speed for the selected route.
-                       </p>
+                    <div className="space-y-2 text-sm">
+                      <p className="font-semibold">Route Info:</p>
+                      <p>Start: {startPos ? `${startPos.lat.toFixed(4)}, ${startPos.lng.toFixed(4)}` : 'Not set'}</p>
+                      <p>End: {endPos ? `${endPos.lat.toFixed(4)}, ${endPos.lng.toFixed(4)}` : 'Not set'}</p>
+                      <p>Distance: {distanceText}</p>
+                      <p>Duration: {formatTime(duration)}</p>
                     </div>
                   </div>
                 </DialogContent>
@@ -357,20 +369,20 @@ export default function MapTimer() {
         </Card>
       </div>
 
-      {/* Legend / Info (Bottom) */}
+      {/* Legend */}
       <div className="absolute bottom-6 left-6 z-10 hidden md:block">
          <Card className="p-3 bg-white/80 backdrop-blur text-xs space-y-1">
            <div className="flex items-center gap-2">
              <div className="w-3 h-3 rounded-full bg-green-500"></div>
-             <span>Start Point</span>
+             <span>Start</span>
            </div>
            <div className="flex items-center gap-2">
              <div className="w-3 h-3 rounded-full bg-red-500"></div>
-             <span>Destination</span>
+             <span>End</span>
            </div>
            <div className="flex items-center gap-2">
              <div className="w-3 h-3 rounded-full bg-blue-500 border border-white"></div>
-             <span>You (Timer)</span>
+             <span>You</span>
            </div>
          </Card>
       </div>
