@@ -90,125 +90,6 @@ export default function MapTimer() {
   const WALKING_SPEED_MS = (WALKING_SPEED_KMH * 1000) / 3600; // ~1.39 m/s
   const METERS_PER_STEP = 0.75; // Average step length in meters
 
-  // Fetch Route from OSRM
-  // const fetchRoute = async (start: LatLng, end: LatLng) => {
-  //   console.log("🛣️ Fetching route from", start, "to", end);
-  //   setIsLoadingRoute(true);
-  //   setRouteError(null);
-
-  //   try {
-  //     // OSRM expects: lng,lat;lng,lat
-  //     const url = `https://router.project-osrm.org/route/v1/walking/${start.lng},${start.lat};${end.lng},${end.lat}?overview=full&geometries=geojson`;
-  //     console.log("📍 OSRM URL:", url);
-
-  //     const response = await fetch(url, {
-  //       headers: { Accept: "application/json" },
-  //       mode: "cors",
-  //     });
-
-  //     if (!response.ok) {
-  //       throw new Error(`HTTP ${response.status}`);
-  //     }
-
-  //     const data = await response.json();
-  //     console.log("📊 OSRM Response:", data);
-
-  //     if (data.code !== "Ok") {
-  //       throw new Error(data.message || "Route calculation failed");
-  //     }
-
-  //     if (data.routes && data.routes.length > 0) {
-  //       const route = data.routes[0];
-  //       const distanceMeters = route.distance;
-  //       const distanceKm = distanceMeters / 1000;
-
-  //       // Calculate duration based on walking speed instead of OSRM's estimate
-  //       // OSRM's walking duration is often too optimistic for real walking
-  //       const estimatedDurationSeconds = Math.ceil(
-  //         (distanceKm / WALKING_SPEED_KMH) * 3600,
-  //       );
-  //       const estimatedSteps = Math.floor(distanceMeters / METERS_PER_STEP);
-
-  //       const coordinates = route.geometry.coordinates;
-
-  //       console.log(
-  //         `✅ Route found: ${distanceKm.toFixed(2)} km, ` +
-  //           `Estimated: ${Math.floor(estimatedDurationSeconds / 60)} min ${estimatedDurationSeconds % 60} sec, ` +
-  //           `~${estimatedSteps.toLocaleString()} steps`,
-  //       );
-
-  //       // Convert to Leaflet LatLng for drawing
-  //       const path = coordinates.map((coord: number[]) => ({
-  //         lat: coord[1],
-  //         lng: coord[0],
-  //       }));
-
-  //       // Create Turf LineString for interpolation
-  //       const line = turf.lineString(coordinates);
-
-  //       const routeData: RouteData = {
-  //         path,
-  //         line,
-  //         distance: distanceMeters,
-  //         duration: estimatedDurationSeconds,
-  //       };
-
-  //       setRouteData(routeData);
-  //       setRoutePath(path);
-  //       setTotalDuration(estimatedDurationSeconds);
-  //       setTimeLeft(estimatedDurationSeconds);
-  //       setCurrentPos(start);
-  //       setSteps(0);
-  //       setProgress(0);
-
-  //       return routeData;
-  //     } else {
-  //       throw new Error("No routes found");
-  //     }
-  //   } catch (error: any) {
-  //     console.error("❌ Route fetch error:", error);
-
-  //     // Fallback: Straight line calculation
-  //     console.log("⚠️ Fallback to straight line routing");
-  //     const straightLine = [
-  //       [start.lng, start.lat],
-  //       [end.lng, end.lat],
-  //     ];
-  //     const path = [
-  //       { lat: start.lat, lng: start.lng },
-  //       { lat: end.lat, lng: end.lng },
-  //     ];
-  //     const line = turf.lineString(straightLine);
-
-  //     const distanceMeters = turf.length(line, { units: "meters" });
-  //     const distanceKm = distanceMeters / 1000;
-  //     const estimatedDurationSeconds = Math.ceil(
-  //       (distanceKm / WALKING_SPEED_KMH) * 3600,
-  //     );
-
-  //     const routeData: RouteData = {
-  //       path,
-  //       line,
-  //       distance: distanceMeters,
-  //       duration: estimatedDurationSeconds,
-  //     };
-
-  //     setRouteData(routeData);
-  //     setRoutePath(path);
-  //     setTotalDuration(estimatedDurationSeconds);
-  //     setTimeLeft(estimatedDurationSeconds);
-  //     setCurrentPos(start);
-  //     setSteps(0);
-  //     setProgress(0);
-
-  //     setRouteError("Using straight line estimate (API limit reached)");
-
-  //     return routeData;
-  //   } finally {
-  //     setIsLoadingRoute(false);
-  //   }
-  // };
-
   const fetchRoute = async (start: LatLng, end: LatLng) => {
     console.log("🛣️ Fetching route from", start, "to", end);
     setIsLoadingRoute(true);
@@ -251,7 +132,7 @@ export default function MapTimer() {
 
         // Calculate duration based on walking speed
         const estimatedDurationSeconds = Math.ceil(
-          (distanceKm / WALKING_SPEED_KMH) * 3600,
+          (distanceKm / WALKING_SPEED_KMH) * 3600
         );
         const estimatedSteps = Math.floor(distanceMeters / METERS_PER_STEP);
 
@@ -259,8 +140,10 @@ export default function MapTimer() {
 
         console.log(
           `✅ Route found: ${distanceKm.toFixed(2)} km, ` +
-            `Estimated: ${Math.floor(estimatedDurationSeconds / 60)} min ${estimatedDurationSeconds % 60} sec, ` +
-            `~${estimatedSteps.toLocaleString()} steps`,
+            `Estimated: ${Math.floor(estimatedDurationSeconds / 60)} min ${
+              estimatedDurationSeconds % 60
+            } sec, ` +
+            `~${estimatedSteps.toLocaleString()} steps`
         );
 
         // Convert to Leaflet LatLng for drawing
@@ -309,7 +192,7 @@ export default function MapTimer() {
       const distanceMeters = turf.length(line, { units: "meters" });
       const distanceKm = distanceMeters / 1000;
       const estimatedDurationSeconds = Math.ceil(
-        (distanceKm / WALKING_SPEED_KMH) * 3600,
+        (distanceKm / WALKING_SPEED_KMH) * 3600
       );
 
       const routeData: RouteData = {
@@ -396,7 +279,7 @@ export default function MapTimer() {
       const totalDistance = routeData.distance;
       const newProgress = Math.min(
         progress + distanceTraveled / totalDistance,
-        1,
+        1
       );
 
       // Update steps
@@ -507,7 +390,9 @@ export default function MapTimer() {
     const seconds = Math.floor(totalSeconds % 60);
 
     if (hours > 0) {
-      return `${hours}:${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
+      return `${hours}:${minutes.toString().padStart(2, "0")}:${seconds
+        .toString()
+        .padStart(2, "0")}`;
     }
     return `${minutes}:${seconds.toString().padStart(2, "0")}`;
   };
@@ -682,7 +567,7 @@ export default function MapTimer() {
                       <span className="text-xs">
                         {distanceText} · {formatTime(totalDuration)} · ~
                         {Math.floor(
-                          routeData.distance / METERS_PER_STEP,
+                          routeData.distance / METERS_PER_STEP
                         ).toLocaleString()}{" "}
                         steps
                       </span>
@@ -695,7 +580,11 @@ export default function MapTimer() {
             <div className="flex items-center gap-3 w-full justify-center">
               <Button
                 size="lg"
-                className={`w-16 h-16 rounded-full shadow-lg transition-all ${!startPos || !endPos || !routePath.length || isLoadingRoute ? "opacity-50 cursor-not-allowed" : "hover:scale-105"}`}
+                className={`w-16 h-16 rounded-full shadow-lg transition-all ${
+                  !startPos || !endPos || !routePath.length || isLoadingRoute
+                    ? "opacity-50 cursor-not-allowed"
+                    : "hover:scale-105"
+                }`}
                 disabled={
                   !startPos || !endPos || !routePath.length || isLoadingRoute
                 }
@@ -737,7 +626,9 @@ export default function MapTimer() {
                       <p>
                         Start:{" "}
                         {startPos
-                          ? `${startPos.lat.toFixed(4)}, ${startPos.lng.toFixed(4)}`
+                          ? `${startPos.lat.toFixed(4)}, ${startPos.lng.toFixed(
+                              4
+                            )}`
                           : "Not set"}
                       </p>
                       <p>
@@ -753,7 +644,7 @@ export default function MapTimer() {
                         Total Steps:{" "}
                         {routeData
                           ? Math.floor(
-                              routeData.distance / METERS_PER_STEP,
+                              routeData.distance / METERS_PER_STEP
                             ).toLocaleString()
                           : "0"}
                       </p>
