@@ -12,29 +12,16 @@ import {
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 
-import {
-  Play,
-  Pause,
-  RotateCcw,
-  MapPin,
-  Navigation,
-  Settings,
-  Loader2,
-  AlertCircle,
-  Maximize2,
-  Minimize2,
-} from "lucide-react";
+import { Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+import { Dialog, DialogTrigger } from "@/components/ui/dialog";
 import { Card } from "@/components/ui/card";
 import confetti from "canvas-confetti";
 import * as turf from "@turf/turf";
+
+import TimerControls from "@/components/TimerControls";
+import RouteStatus from "@/components/RouteStatus";
+import SettingsPanel from "@/components/SettingsPanel";
 
 // Fix Leaflet marker icons
 import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
@@ -85,6 +72,7 @@ export default function MapTimer() {
 
   const [isSettingStart, setIsSettingStart] = useState(true);
   const [isMinimized, setIsMinimized] = useState(false);
+
   // Refs for movement logic
   const animationRef = useRef<number | null>(null);
   const lastUpdateRef = useRef<number>(Date.now());
@@ -103,16 +91,13 @@ export default function MapTimer() {
     setRouteError(null);
 
     try {
-      // OSRM expects: lng,lat;lng,lat
       const url = `https://router.project-osrm.org/route/v1/walking/${start.lng},${start.lat};${end.lng},${end.lat}?overview=full&geometries=geojson`;
       console.log("📍 OSRM URL:", url);
 
-      // Create a timeout promise that rejects after 2 seconds
       const timeoutPromise = new Promise((_, reject) => {
         setTimeout(() => reject(new Error("Timeout after 2 seconds")), 2000);
       });
 
-      // Race between fetch and timeout
       const response = (await Promise.race([
         fetch(url, {
           headers: { Accept: "application/json" },
@@ -137,7 +122,6 @@ export default function MapTimer() {
         const distanceMeters = route.distance;
         const distanceKm = distanceMeters / 1000;
 
-        // Calculate duration based on walking speed
         const estimatedDurationSeconds = Math.ceil(
           (distanceKm / WALKING_SPEED_KMH) * 3600
         );
@@ -153,13 +137,11 @@ export default function MapTimer() {
             `~${estimatedSteps.toLocaleString()} steps`
         );
 
-        // Convert to Leaflet LatLng for drawing
         const path = coordinates.map((coord: number[]) => ({
           lat: coord[1],
           lng: coord[0],
         }));
 
-        // Create Turf LineString for interpolation
         const line = turf.lineString(coordinates);
 
         const routeData: RouteData = {
@@ -184,7 +166,6 @@ export default function MapTimer() {
     } catch (error: any) {
       console.error("❌ Route fetch error:", error.message);
 
-      // Fallback to straight line after 2 seconds timeout
       console.log("⚠️ Fallback to straight line routing (timeout or error)");
       const straightLine = [
         [start.lng, start.lat],
@@ -217,7 +198,6 @@ export default function MapTimer() {
       setSteps(0);
       setProgress(0);
 
-      // Different message for timeout vs other errors
       if (error.message.includes("Timeout")) {
         setRouteError("Using straight line (OSRM was slow)");
       } else {
@@ -271,7 +251,7 @@ export default function MapTimer() {
 
     const animate = () => {
       const now = Date.now();
-      const deltaTime = (now - lastUpdateRef.current) / 1000; // Convert to seconds
+      const deltaTime = (now - lastUpdateRef.current) / 1000; // in seconds
       lastUpdateRef.current = now;
 
       if (deltaTime <= 0) {
@@ -279,21 +259,16 @@ export default function MapTimer() {
         return;
       }
 
-      // Calculate distance traveled based on walking speed
-      const distanceTraveled = WALKING_SPEED_MS * deltaTime; // in meters
-
-      // Update progress
+      const distanceTraveled = WALKING_SPEED_MS * deltaTime;
       const totalDistance = routeData.distance;
       const newProgress = Math.min(
         progress + distanceTraveled / totalDistance,
         1
       );
 
-      // Update steps
       const distanceTraveledMeters = newProgress * totalDistance;
       const newSteps = Math.floor(distanceTraveledMeters / METERS_PER_STEP);
 
-      // Update position along route
       if (routeData.line && newProgress < 1) {
         const targetDistance = totalDistance * newProgress;
         const point = turf.along(routeData.line, targetDistance / 1000, {
@@ -305,7 +280,6 @@ export default function MapTimer() {
         setCurrentPos(endPos);
       }
 
-      // Update time left
       const elapsedTime = newProgress * routeData.duration;
       const newTimeLeft = Math.max(0, routeData.duration - elapsedTime);
 
@@ -313,7 +287,6 @@ export default function MapTimer() {
       setSteps(newSteps);
       setTimeLeft(Math.round(newTimeLeft));
 
-      // Trigger completion
       if (newProgress >= 1) {
         setIsActive(false);
         confetti({
@@ -337,12 +310,10 @@ export default function MapTimer() {
     };
   }, [isActive, routeData, endPos, progress]);
 
-  // Timer display update (separate from animation)
+  // Timer display update
   useEffect(() => {
     if (isActive && timeLeft > 0) {
-      const interval = setInterval(() => {
-        // This just updates the display, actual movement is handled by animation
-      }, 500);
+      const interval = setInterval(() => {}, 1000);
       return () => clearInterval(interval);
     } else if (timeLeft === 0 && isActive) {
       setIsActive(false);
@@ -361,7 +332,6 @@ export default function MapTimer() {
     if (!startPos || !endPos || !routePath.length || isLoadingRoute) return;
 
     if (!isActive && timeLeft <= 0) {
-      // Reset to start if timer finished
       setProgress(0);
       setSteps(0);
       setTimeLeft(totalDuration);
@@ -391,19 +361,6 @@ export default function MapTimer() {
     console.log("↺ Reset complete");
   };
 
-  const formatTime = (totalSeconds: number) => {
-    const hours = Math.floor(totalSeconds / 3600);
-    const minutes = Math.floor((totalSeconds % 3600) / 60);
-    const seconds = Math.floor(totalSeconds % 60);
-
-    if (hours > 0) {
-      return `${hours}:${minutes.toString().padStart(2, "0")}:${seconds
-        .toString()
-        .padStart(2, "0")}`;
-    }
-    return `${minutes}:${seconds.toString().padStart(2, "0")}`;
-  };
-
   const distanceText = routeData
     ? `${(routeData.distance / 1000).toFixed(2)} km`
     : "0 km";
@@ -413,7 +370,7 @@ export default function MapTimer() {
       {/* Map Layer */}
       <div className="absolute inset-0 z-0">
         <MapContainer
-          center={[20.5937, 78.9629]} // India
+          center={[20.5937, 78.9629]}
           zoom={5}
           scrollWheelZoom
           className="w-full h-full"
@@ -502,216 +459,67 @@ export default function MapTimer() {
       </div>
 
       {/* HUD Overlay with Minimize Toggle */}
-      <div className="absolute top-6 left-1/2 -translate-x-1/2 z-10 w-[90%] max-w-md">
+      <div className="absolute top-6 left-1/2 -translate-x-1/2 z-10  max-w-md">
         <Card
           className={`p-4 bg-background/90 backdrop-blur-md shadow-2xl border-2 border-primary/20 transition-all duration-300 ${
-            isMinimized ? "opacity-80 hover:opacity-100 scale-95" : ""
+            isMinimized ? "opacity-60 hover:opacity-100 scale-95" : ""
           }`}
         >
-          <div className="flex flex-col items-center gap-4">
-            {/* Header with minimize button */}
-            <div className="flex items-center justify-between w-full">
-              <div className="flex items-center gap-2">
-                <Navigation className="w-5 h-5" />
-                <h1 className="text-xl font-bold tracking-tight text-primary">
-                  MAP TIMER
-                </h1>
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-8 w-8 p-0"
-                onClick={() => setIsMinimized(!isMinimized)}
-              >
-                {isMinimized ? (
-                  <Maximize2 className="w-4 h-4" />
-                ) : (
-                  <Minimize2 className="w-4 h-4" />
-                )}
-              </Button>
+          <TimerControls
+            timeLeft={timeLeft}
+            isActive={isActive}
+            progress={progress}
+            steps={steps}
+            totalDuration={totalDuration}
+            distanceText={distanceText}
+            isMinimized={isMinimized}
+            routeData={routeData}
+            startPos={startPos}
+            endPos={endPos}
+            routePath={routePath}
+            isLoadingRoute={isLoadingRoute}
+            onToggleTimer={toggleTimer}
+            onResetTimer={resetTimer}
+            onToggleMinimize={() => setIsMinimized(!isMinimized)}
+          />
+
+          {!isActive && !isMinimized && (
+            <RouteStatus
+              isLoadingRoute={isLoadingRoute}
+              routeError={routeError}
+              startPos={startPos}
+              endPos={endPos}
+              routeData={routeData}
+              distanceText={distanceText}
+              totalDuration={totalDuration}
+              METERS_PER_STEP={METERS_PER_STEP}
+              isActive={isActive}
+            />
+          )}
+
+          {!isMinimized && (
+            <div className="flex justify-center mt-4">
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <Settings className="w-4 h-4 mr-2" />
+                    Settings
+                  </Button>
+                </DialogTrigger>
+                <SettingsPanel
+                  startPos={startPos}
+                  endPos={endPos}
+                  distanceText={distanceText}
+                  totalDuration={totalDuration}
+                  steps={steps}
+                  progress={progress}
+                  routeData={routeData}
+                  METERS_PER_STEP={METERS_PER_STEP}
+                  WALKING_SPEED_KMH={WALKING_SPEED_KMH}
+                />
+              </Dialog>
             </div>
-
-            {/* Minimized View */}
-            {isMinimized ? (
-              <div
-                className="flex flex-col items-center w-full cursor-pointer"
-                onClick={() => setIsMinimized(false)}
-              >
-                <div className="text-3xl font-mono font-bold tracking-widest text-foreground tabular-nums">
-                  {formatTime(timeLeft)}
-                </div>
-                <div className="text-sm text-muted-foreground mt-1">
-                  Steps: {steps.toLocaleString()}
-                  {totalDuration > 0 && ` · ${(progress * 100).toFixed(0)}%`}
-                </div>
-              </div>
-            ) : (
-              <>
-                {/* Timer Display */}
-                <div className="flex flex-col items-center">
-                  <div className="text-5xl font-mono font-bold tracking-widest text-foreground tabular-nums">
-                    {formatTime(timeLeft)}
-                  </div>
-                  {totalDuration > 0 && (
-                    <div className="flex flex-col items-center mt-1">
-                      <span className="text-xs text-muted-foreground">
-                        {distanceText} · {formatTime(totalDuration)}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        Steps: {steps.toLocaleString()}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        Progress: {(progress * 100).toFixed(1)}%
-                      </span>
-                      {routeData && (
-                        <div className="w-full bg-gray-200 rounded-full h-2 mt-1">
-                          <div
-                            className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                            style={{ width: `${progress * 100}%` }}
-                          ></div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                {/* Status Message */}
-                {!isActive && (
-                  <div className="text-sm text-center bg-muted/50 p-2 rounded w-full min-h-14] flex items-center justify-center">
-                    {routeError && (
-                      <div className="flex items-start gap-2 text-amber-500">
-                        <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
-                        <span>{routeError}</span>
-                      </div>
-                    )}
-                    {isLoadingRoute && (
-                      <span className="flex items-center gap-2 text-blue-500">
-                        <Loader2 className="w-4 h-4 animate-spin" /> Calculating
-                        route...
-                      </span>
-                    )}
-                    {!isLoadingRoute && !routeError && !startPos && (
-                      <span className="text-green-600 font-bold animate-pulse">
-                        Tap map to set START
-                      </span>
-                    )}
-                    {!isLoadingRoute && !routeError && startPos && !endPos && (
-                      <span className="text-orange-500 font-bold animate-pulse">
-                        Tap map to set DESTINATION
-                      </span>
-                    )}
-                    {!isLoadingRoute &&
-                      !routeError &&
-                      startPos &&
-                      endPos &&
-                      routeData && (
-                        <div className="flex flex-col">
-                          <span className="font-semibold text-foreground">
-                            ✅ Route Ready!
-                          </span>
-                          <span className="text-xs">
-                            {distanceText} · {formatTime(totalDuration)} · ~
-                            {Math.floor(
-                              routeData.distance / METERS_PER_STEP
-                            ).toLocaleString()}{" "}
-                            steps
-                          </span>
-                        </div>
-                      )}
-                  </div>
-                )}
-
-                {/* Controls */}
-                <div className="flex items-center gap-3 w-full justify-center">
-                  <Button
-                    size="lg"
-                    className={`w-16 h-16 rounded-full shadow-lg transition-all ${
-                      !startPos ||
-                      !endPos ||
-                      !routePath.length ||
-                      isLoadingRoute
-                        ? "opacity-50 cursor-not-allowed"
-                        : "hover:scale-105"
-                    }`}
-                    disabled={
-                      !startPos ||
-                      !endPos ||
-                      !routePath.length ||
-                      isLoadingRoute
-                    }
-                    onClick={toggleTimer}
-                  >
-                    {isActive ? (
-                      <Pause className="w-8 h-8" />
-                    ) : (
-                      <Play className="w-8 h-8 ml-1" />
-                    )}
-                  </Button>
-
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="w-12 h-12 rounded-full"
-                    onClick={resetTimer}
-                  >
-                    <RotateCcw className="w-5 h-5" />
-                  </Button>
-
-                  <Dialog>
-                    <DialogTrigger asChild>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="w-12 h-12 rounded-full"
-                      >
-                        <Settings className="w-5 h-5" />
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>Settings</DialogTitle>
-                      </DialogHeader>
-                      <div className="py-4 space-y-6">
-                        <div className="space-y-2 text-sm">
-                          <p className="font-semibold">Route Info:</p>
-                          <p>
-                            Start:{" "}
-                            {startPos
-                              ? `${startPos.lat.toFixed(
-                                  4
-                                )}, ${startPos.lng.toFixed(4)}`
-                              : "Not set"}
-                          </p>
-                          <p>
-                            End:{" "}
-                            {endPos
-                              ? `${endPos.lat.toFixed(4)}, ${endPos.lng.toFixed(
-                                  4
-                                )}`
-                              : "Not set"}
-                          </p>
-                          <p>Distance: {distanceText}</p>
-                          <p>Duration: {formatTime(totalDuration)}</p>
-                          <p>Current Steps: {steps.toLocaleString()}</p>
-                          <p>
-                            Total Steps:{" "}
-                            {routeData
-                              ? Math.floor(
-                                  routeData.distance / METERS_PER_STEP
-                                ).toLocaleString()
-                              : "0"}
-                          </p>
-                          <p>Progress: {(progress * 100).toFixed(1)}%</p>
-                          <p>Walking Speed: {WALKING_SPEED_KMH} km/h</p>
-                          <p>Step Length: {METERS_PER_STEP}m</p>
-                        </div>
-                      </div>
-                    </DialogContent>
-                  </Dialog>
-                </div>
-              </>
-            )}
-          </div>
+          )}
         </Card>
       </div>
 

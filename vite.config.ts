@@ -44,7 +44,7 @@ export default defineConfig({
     emptyOutDir: true,
   },
   server: {
-    host: true, // Allows both localhost and IP
+    host: "0.0.0.0",
     allowedHosts: true,
     fs: {
       strict: true,

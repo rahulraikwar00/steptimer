@@ -41,7 +41,13 @@ export default function TimerControls({
     const hours = Math.floor(totalSeconds / 3600);
     const minutes = Math.floor((totalSeconds % 3600) / 60);
     const seconds = Math.floor(totalSeconds % 60);
+    const days = Math.floor(hours / 24);
 
+    if (hours >= 24) {
+      return `${days}d:${(hours % 24).toString()}:${minutes
+        .toString()
+        .padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
+    }
     if (hours > 0) {
       return `${hours}:${minutes.toString().padStart(2, "0")}:${seconds
         .toString()
@@ -51,7 +57,7 @@ export default function TimerControls({
   };
 
   return (
-    <div className="flex flex-col items-center gap-4">
+    <div className="justify-center items-center flex flex-col gap-2 w-full ">
       {/* Header with minimize button */}
       <div className="flex items-center justify-between w-full">
         <div className="flex items-center gap-2">
@@ -72,14 +78,13 @@ export default function TimerControls({
           )}
         </Button>
       </div>
-
       {/* Minimized View */}
       {isMinimized ? (
         <div
           className="flex flex-col items-center w-full cursor-pointer"
           onClick={onToggleMinimize}
         >
-          <div className="text-3xl font-mono font-bold tracking-widest text-foreground tabular-nums">
+          <div className="text-3xl font-mono font-bold tracking-widest text-foreground tabular-nums ">
             {formatTime(timeLeft)}
           </div>
           <div className="text-sm text-muted-foreground mt-1">
@@ -121,7 +126,7 @@ export default function TimerControls({
           <div className="flex items-center gap-3 w-full justify-center">
             <Button
               size="lg"
-              className={`w-16 h-16 rounded-full shadow-lg transition-all ${
+              className={`w-full h-12 rounded-full shadow-lg transition-all ${
                 !startPos || !endPos || !routePath.length || isLoadingRoute
                   ? "opacity-50 cursor-not-allowed"
                   : "hover:scale-105"
@@ -141,7 +146,7 @@ export default function TimerControls({
             <Button
               variant="outline"
               size="icon"
-              className="w-12 h-12 rounded-full"
+              className="hover:scale-105 hover:bg-orange-400 hover:text-black w-12 h-12 rounded-full"
               onClick={onResetTimer}
             >
               <RotateCcw className="w-5 h-5" />

@@ -32,17 +32,28 @@ export default function SettingsPanel({
     const hours = Math.floor(totalSeconds / 3600);
     const minutes = Math.floor((totalSeconds % 3600) / 60);
     const seconds = Math.floor(totalSeconds % 60);
+    const days = Math.floor(hours % 24);
 
+    console.log({ totalSeconds, hours, minutes, seconds, days });
+
+    if (hours >= 24) {
+      return `${Math.floor(hours / 24)}d ${days}h ${minutes}m ${seconds}s`;
+    }
     if (hours > 0) {
       return `${hours}h ${minutes}m ${seconds}s`;
     }
-    return `${minutes}m ${seconds}s`;
+    if (minutes > 0) {
+      return `${minutes}m ${seconds}s`;
+    }
+    return `${seconds}s`;
   };
 
   return (
     <DialogContent>
       <DialogHeader>
-        <DialogTitle>Route Settings & Info</DialogTitle>
+        <DialogTitle className="text-yellow-300">
+          Route Settings & Info
+        </DialogTitle>
       </DialogHeader>
       <div className="py-4 space-y-6">
         <div className="space-y-3 text-sm">
@@ -65,7 +76,7 @@ export default function SettingsPanel({
             <div className="space-y-1">
               <div>
                 <p className="text-muted-foreground text-xs">Start:</p>
-                <p className="text-xs font-mono">
+                <p className="font-medium">
                   {startPos
                     ? `${startPos.lat.toFixed(6)}, ${startPos.lng.toFixed(6)}`
                     : "Not set"}
@@ -73,7 +84,7 @@ export default function SettingsPanel({
               </div>
               <div>
                 <p className="text-muted-foreground text-xs">End:</p>
-                <p className="text-xs font-mono">
+                <p className="font-medium">
                   {endPos
                     ? `${endPos.lat.toFixed(6)}, ${endPos.lng.toFixed(6)}`
                     : "Not set"}
