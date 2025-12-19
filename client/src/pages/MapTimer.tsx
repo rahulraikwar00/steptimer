@@ -8,6 +8,7 @@ import {
   useMapEvents,
   Polyline,
   CircleMarker,
+  useMap,
 } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
@@ -78,7 +79,7 @@ export default function MapTimer() {
   const lastUpdateRef = useRef<number>(Date.now());
 
   // Constants
-  const WALKING_SPEED_KMH = 5; // 5 km/h walking speed
+  const WALKING_SPEED_KMH = 600; // 5 km/h walking speed
   const WALKING_SPEED_MS = React.useMemo(
     () => (WALKING_SPEED_KMH * 1000) / 3600,
     []
@@ -365,6 +366,19 @@ export default function MapTimer() {
     ? `${(routeData.distance / 1000).toFixed(2)} km`
     : "0 km";
 
+  function RecenterMap({ position }: { position: LatLng | null }) {
+    const map = useMap();
+    useEffect(() => {
+      if (position) {
+        map.setView([position.lat, position.lng], map.getZoom(), {
+          animate: true,
+        });
+      }
+    }, [position, map]);
+
+    return null;
+  }
+
   return (
     <div className="relative w-full h-screen bg-background overflow-hidden flex flex-col">
       {/* Map Layer */}
@@ -380,6 +394,7 @@ export default function MapTimer() {
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
+          <RecenterMap position={currentPos} />
           <MapEvents onMapClick={handleMapClick} />
 
           {startPos && (
@@ -459,9 +474,9 @@ export default function MapTimer() {
       </div>
 
       {/* HUD Overlay with Minimize Toggle */}
-      <div className="absolute top-6 left-1/2 -translate-x-1/2 z-10  max-w-md">
+      <div className="absolute top-6   z-10  max-w-md">
         <Card
-          className={`p-4 bg-background/90 backdrop-blur-md shadow-2xl border-2 border-primary/20 transition-all duration-300 ${
+          className={` backdrop-blur-md shadow-2xl border-2  transition-all duration-300 ${
             isMinimized ? "opacity-60 hover:opacity-100 scale-95" : ""
           }`}
         >
