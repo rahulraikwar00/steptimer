@@ -340,7 +340,7 @@ export default function MapTimer() {
     <div className="relative w-full h-screen bg-orange-50 overflow-hidden">
       <MapContainer
         center={[20, 78]}
-        zoom={13}
+        zoom={8}
         className="w-full h-full z-0"
         zoomControl={false}
       >
