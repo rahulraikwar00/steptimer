@@ -315,138 +315,153 @@ export default function MapTimer() {
   };
 
   return (
-    <div className="relative w-full h-screen bg-slate-100 overflow-hidden">
-      {/* Search Bar */}
-      <div className="absolute top-6 left-1/2 -translate-x-1/2 z-2000 w-[90%] max-w-sm">
-        <form onSubmit={handleSearch} className="relative">
-          <div className="absolute left-4 top-1/2 -translate-y-1/2">
-            {isSearching ? (
-              <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-            ) : (
-              <Search className="w-5 h-5 text-slate-400" />
+    <div className="relative h-[100dvh] w-full overflow-hidden bg-slate-100 flex flex-col">
+      <div className="relative w-full h-screen bg-slate-100 overflow-hidden">
+        {/* Search Bar */}
+        <div className="absolute top-6 left-1/2 -translate-x-1/2 z-2000 w-[90%] max-w-sm">
+          <form onSubmit={handleSearch} className="relative">
+            <div className="absolute left-4 top-1/2 -translate-y-1/2">
+              {isSearching ? (
+                <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <Search className="w-5 h-5 text-slate-400" />
+              )}
+            </div>
+            <input
+              type="text"
+              placeholder={
+                !points.start
+                  ? "Search Start Location..."
+                  : "Search Destination..."
+              }
+              className="w-full h-14 pl-12 pr-12 bg-white/80 backdrop-blur-xl border border-white/40 shadow-2xl rounded-2xl focus:outline-none text-slate-800 font-medium"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400"
+              >
+                <X className="w-4 h-4" />
+              </button>
             )}
-          </div>
-          <input
-            type="text"
-            placeholder={
-              !points.start
-                ? "Search Start Location..."
-                : "Search Destination..."
-            }
-            className="w-full h-14 pl-12 pr-12 bg-white/80 backdrop-blur-xl border border-white/40 shadow-2xl rounded-2xl focus:outline-none text-slate-800 font-medium"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+          </form>
+        </div>
+
+        {/* Map Layer */}
+        <MapContainer
+          center={[20, 78]}
+          zoom={5}
+          className="w-full h-full z-0"
+          zoomControl={false}
+        >
+          <TileLayer url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" />
+          <MapController
+            onMapClick={handleMapClick}
+            pos={currentPos}
+            isActive={isActive}
+            isLocked={isActive || isLoadingRoute}
           />
-          {searchQuery && (
-            <button
-              type="button"
-              onClick={() => setSearchQuery("")}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400"
-            >
-              <X className="w-4 h-4" />
-            </button>
+          {route && (
+            <Polyline
+              positions={route.path}
+              color="#007AFF"
+              weight={6}
+              opacity={0.6}
+            />
           )}
-        </form>
-      </div>
+          {currentPos && (
+            <CircleMarker
+              center={currentPos}
+              radius={8}
+              pathOptions={{
+                fillColor: "#007AFF",
+                color: "#fff",
+                fillOpacity: 1,
+                weight: 3,
+              }}
+            />
+          )}
+          {points.start && <Marker position={points.start} />}
+          {points.end && <Marker position={points.end} />}
+        </MapContainer>
 
-      {/* Map Layer */}
-      <MapContainer
-        center={[20, 78]}
-        zoom={5}
-        className="w-full h-full z-0"
-        zoomControl={false}
-      >
-        <TileLayer url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" />
-        <MapController
-          onMapClick={handleMapClick}
-          pos={currentPos}
-          isActive={isActive}
-          isLocked={isActive || isLoadingRoute}
-        />
-        {route && (
-          <Polyline
-            positions={route.path}
-            color="#007AFF"
-            weight={6}
-            opacity={0.6}
-          />
-        )}
-        {currentPos && (
-          <CircleMarker
-            center={currentPos}
-            radius={8}
-            pathOptions={{
-              fillColor: "#007AFF",
-              color: "#fff",
-              fillOpacity: 1,
-              weight: 3,
-            }}
-          />
-        )}
-        {points.start && <Marker position={points.start} />}
-        {points.end && <Marker position={points.end} />}
-      </MapContainer>
+        {/* HUD UI */}
+        <div className="absolute bottom-10 left-1/2 -translate-x-1/2 z-1000 w-[90%] max-w-sm flex flex-col gap-3">
+          <Card className="p-6 bg-white/80 backdrop-blur-2xl border-none shadow-2xl rounded-4xl">
+            <div className="flex justify-between items-start mb-4">
+              <div>
+                <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                  Time Remaining
+                </p>
+                <h2 className="text-4xl font-bold text-slate-900 leading-none">
+                  {formatPreciseTime(metrics.timeLeft)}
+                </h2>
+              </div>
+              <div className="h-10 w-10 rounded-full bg-blue-50 flex items-center justify-center">
+                <Navigation2 className="w-5 h-5 text-blue-600 fill-current" />
+              </div>
+            </div>
+            <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden mb-4 border border-slate-200/50 p-0.5">
+              <div
+                className="h-full bg-blue-600 rounded-full transition-all duration-700"
+                style={{ width: `${progress * 100}%` }}
+              />
+            </div>
+            <div className="flex justify-between text-sm font-bold text-slate-800">
+              <span>{metrics.steps.toLocaleString()} Steps</span>
+              <span>{(metrics.distDone / 1000).toFixed(2)} km</span>
+            </div>
+          </Card>
 
-      {/* HUD UI */}
-      <div className="absolute bottom-10 left-1/2 -translate-x-1/2 z-1000 w-[90%] max-w-sm flex flex-col gap-3">
-        <Card className="p-6 bg-white/80 backdrop-blur-2xl border-none shadow-2xl rounded-4xl">
-          <div className="flex justify-between items-start mb-4">
-            <div>
-              <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-1">
-                Time Remaining
-              </p>
-              <h2 className="text-4xl font-bold text-slate-900 leading-none">
-                {formatPreciseTime(metrics.timeLeft)}
-              </h2>
-            </div>
-            <div className="h-10 w-10 rounded-full bg-blue-50 flex items-center justify-center">
-              <Navigation2 className="w-5 h-5 text-blue-600 fill-current" />
-            </div>
-          </div>
-          <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden mb-4 border border-slate-200/50 p-0.5">
-            <div
-              className="h-full bg-blue-600 rounded-full transition-all duration-700"
-              style={{ width: `${progress * 100}%` }}
+          <div className="relative flex gap-2 bg-white/70 backdrop-blur-xl p-2 rounded-4xl shadow-xl border border-white/40">
+            <Button
+              className={`flex-1 h-14 mx-1 rounded-2xl font-bold ${
+                isActive ? "bg-red-50 text-red-600" : "bg-blue-600 text-white"
+              }`}
+              onClick={() => setIsActive(!isActive)}
+              disabled={!route || isLoadingRoute}
+            >
+              {isActive ? (
+                <Pause className="mr-2" />
+              ) : (
+                <Play className="mr-2" />
+              )}
+              {isActive ? "Pause" : "Start"}
+            </Button>
+            <Button
+              variant="outline"
+              className={`h-14 w-14 rounded-3xl transition-all duration-300 border-white/50 shadow-sm ${
+                isSettingsOpen
+                  ? "bg-blue-600 text-white border-blue-600 shadow-blue-200"
+                  : "bg-white/70 backdrop-blur-md text-slate-700 hover:bg-white hover:text-blue-600"
+              }`}
+              onClick={() => setIsSettingsOpen(!isSettingsOpen)}
+            >
+              <Settings
+                className={`w-6 h-6 transition-transform duration-500 ${
+                  isSettingsOpen ? "rotate-90" : "rotate-0"
+                }`}
+              />
+            </Button>
+
+            <Button
+              variant="outline"
+              className="h-14 w-14 rounded-3xl bg-white/70 backdrop-blur-md border-white/50 text-slate-700 shadow-sm hover:bg-white hover:text-red-500 hover:border-red-100 transition-all active:scale-90"
+              onClick={reset}
+            >
+              <RotateCcw className="w-6 h-6" />
+            </Button>
+            <SettingsDropdown
+              isOpen={isSettingsOpen}
+              speed={speedKmh}
+              setSpeed={setSpeedKmh}
+              route={route}
+              metrics={metrics}
             />
           </div>
-          <div className="flex justify-between text-sm font-bold text-slate-800">
-            <span>{metrics.steps.toLocaleString()} Steps</span>
-            <span>{(metrics.distDone / 1000).toFixed(2)} km</span>
-          </div>
-        </Card>
-
-        <div className="relative flex gap-2 bg-white/70 backdrop-blur-xl p-2 rounded-4xl shadow-xl border border-white/40">
-          <Button
-            className={`flex-1 h-14 rounded-24px font-bold ${
-              isActive ? "bg-red-50 text-red-600" : "bg-blue-600 text-white"
-            }`}
-            onClick={() => setIsActive(!isActive)}
-            disabled={!route || isLoadingRoute}
-          >
-            {isActive ? <Pause className="mr-2" /> : <Play className="mr-2" />}
-            {isActive ? "Pause" : "Start"}
-          </Button>
-          <Button
-            variant="outline"
-            className="h-14 w-14 rounded-24px"
-            onClick={() => setIsSettingsOpen(!isSettingsOpen)}
-          >
-            <Settings />
-          </Button>
-          <Button
-            variant="outline"
-            className="h-14 w-14 rounded-24px"
-            onClick={reset}
-          >
-            <RotateCcw />
-          </Button>
-          <SettingsDropdown
-            isOpen={isSettingsOpen}
-            speed={speedKmh}
-            setSpeed={setSpeedKmh}
-            route={route}
-            metrics={metrics}
-          />
         </div>
       </div>
     </div>

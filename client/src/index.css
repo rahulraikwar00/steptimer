@@ -29,6 +29,33 @@
   body {
     @apply bg-background text-foreground overflow-hidden;
   }
+  @layer base {
+    :root {
+      --background: 240 10% 10%;
+      --foreground: 0 0% 90%;
+
+      --primary: 45 90% 60%; /* Gold Miner */
+      --primary-foreground: 240 10% 10%;
+
+      --secondary: 240 5% 25%; /* Rock Grey */
+      --secondary-foreground: 0 0% 98%;
+
+      --accent: 142 70% 45%; /* Sharper Gem Green */
+      --accent-foreground: 0 0% 98%;
+
+      --muted: 240 5% 15%;
+      --muted-foreground: 240 5% 60%;
+
+      --card: 240 8% 12%;
+      --card-foreground: 0 0% 90%;
+
+      --border: 240 5% 25%;
+      --input: 240 5% 20%;
+      --ring: 45 90% 60%;
+
+      --radius: 0.25rem; /* Sharper edges for the retro look */
+    }
+  }
 }
 
 /* Pixel Art Utilities */
