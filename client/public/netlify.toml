@@ -6,7 +6,7 @@
 [[redirects]]
   # This fixes the 404 error when you refresh the page or visit routes
   from = "/*"
-  to = "/index.html"
+  to = "client/index.html"
   status = 200
 
 [[headers]]
