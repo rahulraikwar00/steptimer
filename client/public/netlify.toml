@@ -1,0 +1,16 @@
+[build]
+  base = "client"
+  command = "npm run build"
+  publish = "dist"
+
+[[redirects]]
+  # This fixes the 404 error when you refresh the page or visit routes
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[[headers]]
+  # Important for PWAs: Ensure the Service Worker isn't cached too aggressively
+  for = "/sw.js"
+  [headers.values]
+    cache-control = "public, max-age=0, must-revalidate"
