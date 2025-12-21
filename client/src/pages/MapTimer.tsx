@@ -1,5 +1,9 @@
 import * as React from "react";
 import { useState, useEffect, useRef, useMemo } from "react";
+import "leaflet/dist/leaflet.css";
+import "leaflet-defaulticon-compatibility/dist/leaflet-defaulticon-compatibility.webpack.css"; // Re-uses
+import "leaflet-defaulticon-compatibility";
+
 import {
   MapContainer,
   TileLayer,
@@ -9,7 +13,7 @@ import {
   useMap,
   useMapEvents,
 } from "react-leaflet";
-import "leaflet/dist/leaflet.css";
+
 import L from "leaflet";
 import {
   Settings,
@@ -26,6 +30,13 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import confetti from "canvas-confetti";
 import * as turf from "@turf/turf";
+
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl:
+    "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
+  iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+});
 
 const METERS_PER_STEP = 0.75;
 const WALKING_SPEED_KMH = 5.0;

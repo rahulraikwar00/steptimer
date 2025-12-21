@@ -13,3 +13,5 @@ sitemap.xml
 sw.js
 sw.js.map
 workbox-*.js
+.vercel
+.env*.local
