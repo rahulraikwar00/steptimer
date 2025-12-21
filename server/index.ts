@@ -51,6 +51,13 @@ app.use((req, res, next) => {
   next();
 });
 
+// log connected client details
+app.use((req, res, next) => {
+  const clientIP = req.ip || req.connection.remoteAddress;
+  log(`Client connected: ${clientIP}`);
+  next();
+});
+
 export function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
     hour: "numeric",
@@ -71,7 +78,7 @@ function getNetworkAddresses(): string[] {
     if (iface) {
       for (const config of iface) {
         // Look for IPv4 addresses that aren't internal (127.0.0.1)
-        if (config.family === 'IPv4' && !config.internal) {
+        if (config.family === "IPv4" && !config.internal) {
           addresses.push(config.address);
         }
       }
@@ -102,7 +109,7 @@ function getNetworkAddresses(): string[] {
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
-    
+
     console.error("Server error:", err);
     res.status(status).json({ message });
   });
@@ -113,12 +120,12 @@ function getNetworkAddresses(): string[] {
 
   httpServer.listen(port, host, () => {
     const addresses = getNetworkAddresses();
-    
+
     log(`✅ Server initialized and listening:`);
     log(`   Local:   http://localhost:${port}`);
     log(`   Loopback: http://127.0.0.1:${port}`);
-    
-    addresses.forEach(addr => {
+
+    addresses.forEach((addr) => {
       log(`   Network: http://${addr}:${port}`);
     });
   });
