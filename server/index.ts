@@ -52,44 +52,33 @@ function getNetworkAddresses(): string[] {
 }
 
 // 3. MAIN APP LOGIC
-(async () => {
-  // Register API routes FIRST so they aren't caught by static wildcards
-  await registerRoutes(httpServer, app);
+if (process.env.NODE_ENV === "production") {
+  // Use path.resolve to ensure Vercel sees the absolute path from the root of the deployment
+  const publicPath = path.resolve(__dirname, "public");
 
-  if (process.env.NODE_ENV === "production") {
-    const publicPath = path.join(__dirname, "public");
-    app.use(express.static(publicPath));
+  // Serve static assets (js, css, images)
+  app.use(
+    express.static(publicPath, {
+      maxAge: "1d", // Optional: adds caching for assets
+      index: false, // Prevents it from automatically serving index.html before we want it to
+    })
+  );
 
-    // Handle SPA routing: serve index.html for any unknown route
-    app.get("*", (req, res) => {
-      res.sendFile(path.join(publicPath, "index.html"));
+  // Handle SPA routing: serve index.html for any unknown non-API route
+  app.get("*", (req, res) => {
+    // If the request is for an API that doesn't exist, don't serve index.html
+    if (req.path.startsWith("/api")) {
+      return res.status(404).json({ message: "API endpoint not found" });
+    }
+
+    const indexPath = path.join(publicPath, "index.html");
+    res.sendFile(indexPath, (err) => {
+      if (err) {
+        console.error("Error sending index.html:", err);
+        res.status(500).send("Internal Server Error: Missing frontend build");
+      }
     });
-  } else {
-    // In development, we use Vite's middleware
-    const { setupVite } = await import("./vite");
-    await setupVite(httpServer, app);
-  }
-
-  // API 404 handler
-  app.use("/api/*", (_req: Request, res: Response) => {
-    res.status(404).json({ message: "API endpoint not found" });
   });
-
-  // Global error handler
-  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-    const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
-    console.error("Server error:", err);
-    res.status(status).json({ message });
-  });
-
-  const port = parseInt(process.env.PORT || "5000", 10);
-  httpServer.listen(port, "0.0.0.0", () => {
-    const addresses = getNetworkAddresses();
-    log(`✅ Server listening on port ${port}`);
-    addresses.forEach((addr) => log(`   Network: http://${addr}:${port}`));
-  });
-})();
-
+}
 // Vercel needs the app exported to handle it as a Serverless Function
 export default app;
