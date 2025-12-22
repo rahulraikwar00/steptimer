@@ -6,12 +6,11 @@
   "scripts": {
     "dev": "tsx server/index.ts",
     "build": "tsx script/build.ts",
-    "start": "node dist/index.cjs",
-    "check": "tsc --noEmit",
+    "start": "NODE_ENV=production node dist/index.cjs",
     "db:push": "drizzle-kit push",
+    "check": "tsc --noEmit",
     "clean": "rm -rf dist",
-    "fix:ports": "kill $(lsof -t -i:5000,5432) 2>/dev/null || true",
-    "type-check": "tsc --noEmit -p tsconfig.json"
+    "vercel-build": "npm run build"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

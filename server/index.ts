@@ -1,8 +1,8 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
-import { serveStatic } from "./static";
 import { createServer } from "http";
 import os from "os";
+import path from "path";
 
 // Type definition for the rawBody addition
 declare module "http" {
@@ -57,8 +57,13 @@ function getNetworkAddresses(): string[] {
   await registerRoutes(httpServer, app);
 
   if (process.env.NODE_ENV === "production") {
-    // In production, we serve the built files from dist/public
-    serveStatic(app);
+    const publicPath = path.join(__dirname, "public");
+    app.use(express.static(publicPath));
+
+    // Handle SPA routing: serve index.html for any unknown route
+    app.get("*", (req, res) => {
+      res.sendFile(path.join(publicPath, "index.html"));
+    });
   } else {
     // In development, we use Vite's middleware
     const { setupVite } = await import("./vite");

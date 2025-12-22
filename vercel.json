@@ -3,28 +3,14 @@
   "builds": [
     {
       "src": "dist/index.cjs",
-      "use": "@vercel/node"
+      "use": "@vercel/node",
+      "config": { "includeFiles": ["dist/public/**"] }
     }
   ],
   "routes": [
     {
       "src": "/assets/(.*)",
-      "dest": "dist/public/assets/$1",
-      "headers": {
-        "cache-control": "public, max-age=31536000, immutable"
-      }
-    },
-    {
-      "src": "/favicon.ico",
-      "dest": "dist/public/favicon.ico"
-    },
-    {
-      "src": "/manifest.json",
-      "dest": "dist/public/manifest.json"
-    },
-    {
-      "src": "/(icons/.*)",
-      "dest": "dist/public/$1"
+      "dest": "dist/public/assets/$1"
     },
     {
       "src": "/(.*)",
