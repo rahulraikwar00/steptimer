@@ -4,7 +4,7 @@ FocusWalker is a Progressive Web App (PWA) designed to bridge the gap between me
 
 If you choose a destination 3km away, FocusWalker gives you the exact time it would take to walk there—roughly 36 minutes of focused work.
 
-![UI-v2](https://pasteboard.co/QCyI0LhoeKwR.png)
+![UI-v2](https://github.com/user-attachments/assets/bece4472-c89c-4ec7-b3b0-0921588ad254)
 
 ## 🧠 The "Walking Logic" Core
 
